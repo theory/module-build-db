@@ -14,6 +14,7 @@ Module::Build->new(
     },
     requires           => {
         'Module::Build' => '0.34',
+        'TAP::Harness'  => '3.13',
     },
     recommends         => {
         'Test::Pod'           => '1.20',
