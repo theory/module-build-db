@@ -1,0 +1,7 @@
+_build
+blib
+Module-Build-DB-*
+MANIFEST
+MANIFEST.bak
+META.*
+Build
