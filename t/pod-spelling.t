@@ -10,4 +10,9 @@ all_pod_files_spelling_ok();
 
 __DATA__
 dev
-psql
+DSN
+YAML
+dbi
+SQLite
+
+

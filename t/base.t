@@ -12,17 +12,18 @@ BEGIN {
 can_ok $CLASS, qw(
     context
     cx_config
-    psql
+    db_client
+    db_config_key
     drop_db
-    psql_test
-    test_schema_path
+    db_cmd
+    db_test_cmd
+    test_env
     ACTION_test
     run_tap_harness
     ACTION_config_data
     ACTION_db
     tap_harness_args
     read_cx_config
-    db_cmd
     create_meta_table
     upgrade_db
     _probe

@@ -49,12 +49,29 @@ configuration files in F<conf>. For example, to build in the "dev" context,
 there must be a F<conf/dev.yml> file. Defaults to "test", which is also the
 only required context.
 
-=head3 psql
+=head3 db_config_key
 
-  perl Build.PL --psql /usr/local/pgsql/bin/pgsql
+The YAML key under which DBI configuration is stored in the configuration
+files. Defaults to "dbi". The keys that should be under this configuration
+key are:
 
-Specifies the location of the C<psql> command-line client. Defaults to "psql",
-which should work if a program with that name is somewhere in your path.
+=over
+
+=item * C<dsn>
+
+=item * C<user>
+
+=item * C<pass>
+
+=back
+
+=head3 db_client
+
+  perl Build.PL --db_client /usr/local/pgsql/bin/pgsql
+
+Specifies the location of the database command-line client. Defaults to
+F<psql>, F<mysql>, or F<sqlite3>, depending on the value of the DSN in the
+context configuration file.
 
 =head3 drop_db
 
@@ -64,25 +81,24 @@ Tells the L</"db"> action to drop the database and build a new one. When this
 property is set to a false value (the default), an existing database for the
 current context will not be dropped, but it will be brought up-to-date.
 
-=head3 test_schema_path
+=head3 test_env
 
-  ./Build db --test_schema_path tap,public
+  ./Build db --test_env PGOPTIONS='--search_path=tap,public'
 
-The value to use for the PostgreSQL C<search_path> setting during C<./Build
-test>. If none is supplied then none will be set, and the tests will run with
-the default or per-connection C<search_path> specified for your PostgreSQL
-configuration. It may be useful to set, however, if you're running pgTAP tests
-and have pgTAP installed in a schema outside the normal search path in your
-database.
+Optional hash reference of environment variables to set for the lifetime of
+C<./Build test>. This can be useful when, for example, when using pgTAP tests
+and the pgTAP functions are installed in a schema outside the normal search
+path in your database.
 
 =cut
 
 __PACKAGE__->add_property( context          => 'test' );
 __PACKAGE__->add_property( cx_config        => undef  );
-__PACKAGE__->add_property( psql             => 'psql' );
+__PACKAGE__->add_property( db_config_key    => 'dbi'  );
+__PACKAGE__->add_property( db_client        => 'psql' );
 __PACKAGE__->add_property( drop_db          => 0      );
-__PACKAGE__->add_property( psql_test        => 0      );
-__PACKAGE__->add_property( test_schema_path => undef  );
+__PACKAGE__->add_property( db_test_cmd      => undef  );
+__PACKAGE__->add_property( test_env         => {}     );
 
 ##############################################################################
 
@@ -115,13 +131,12 @@ sub ACTION_test {
 
     # Set things up for pgTAP tests.
     my $config = $self->read_cx_config;
-    my ( $db, $cmd ) = $self->db_cmd( $config->{'Model::DBI'} );
+    my ( $db, $cmd ) = $self->db_cmd( $config->{$self->db_config_key} );
     push @{ $cmd }, '--dbname' => $db;
-    $self->psql_test( $cmd );
+    $self->db_test_cmd( $cmd );
 
     # Tell the tests where to find stuff, like pgTAP.
-    local $ENV{PGOPTIONS} = '--search_path=' . $self->test_schema_path
-        if $self->test_schema_path;
+    local $ENV{$_} = $self->test_env->{$_} for keys %{ $self->test_env };
 
     # Tell Catalyst to STFU and use the right config.
     local $ENV{CATALYST_DEBUG}  = 0;
@@ -241,7 +256,7 @@ sub ACTION_db {
     # Get the database configuration information.
     my $config = $self->read_cx_config;
 
-    my ( $db, $cmd ) = $self->db_cmd( $config->{'Model::DBI'} );
+    my ( $db, $cmd ) = $self->db_cmd( $config->{$self->db_config_key} );
 
     # Does the database exist?
     my $db_exists = $self->drop_db ? 1 : $self->_probe(
@@ -300,6 +315,8 @@ configuration file.
 =cut
 
 # Make sure htat we can just run SQL tests.
+# XXX Update to use new TAP::Harness source features when they've been merged
+# and released.
 sub tap_harness_args {
     my $self = shift;
     return {
@@ -307,8 +324,8 @@ sub tap_harness_args {
             my ( $harness, $test_file ) = @_;
             # Let Perl tests run.
             return undef if $test_file =~ /[.]t$/;
-            return [ @{ $self->psql_test }, '-f', $test_file ]
-                if $test_file =~ /[.]s$/;
+            return [ @{ $self->db_test_cmd }, '-f', $test_file ]
+                if $test_file =~ /[.]pg$/;
         },
     };
 }
@@ -361,11 +378,11 @@ sub read_cx_config {
   my ($db_name, $db_cmd) = $build->db_cmd;
 
 Uses the current context's configuration to determine all of the options to
-run C<psql> both for testing (pgTAP) and for building the database. Returns
-the name of the database and an array ref representing the C<psql> command and
-all of its options, suitable for passing to C<system>. The The database name
-is not included in the command; simply append it to the command to have the
-command connect to that database:
+run the C<db_client> both for testing and for building the database. Returns
+the name of the database and an array ref representing the C<db_client>
+command and all of its options, suitable for passing to C<system>. The The
+database name is not included in the command; simply append it to the command
+to have the command connect to that database:
 
   push $db_cmd, '--dbname', $db_name;
 
@@ -380,9 +397,10 @@ sub db_cmd {
     my %dsn = map { split /=/ } split /;/, $dsn;
 
     # Set up the PostgreSQL command.
+    # XXX Update to support other clients.
     my @cmd = (
-        $self->psql,
-        '--username' => $dconf->{user},
+        $self->db_client,
+        '--username' => $dconf->{username} || $dconf->{user} || $ENV{PGUSER} || $ENV{USER},
         '--quiet',
         '--no-psqlrc',
         '--no-align',
