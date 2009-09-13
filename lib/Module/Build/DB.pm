@@ -436,8 +436,8 @@ sub create_meta_table {
         SET client_min_messages=warning;
         DROP TABLE IF EXISTS metadata;
         CREATE TABLE metadata (
-            label VARCHAR(64) PRIMARY KEY,
-            value INT NOT NULL DEFAULT 0,
+            label TEXT PRIMARY KEY,
+            value INT  NOT NULL DEFAULT 0,
             note  TEXT NOT NULL
         );
         INSERT INTO metadata VALUES ( 'schema_version', 0, '' );
