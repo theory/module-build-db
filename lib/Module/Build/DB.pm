@@ -136,7 +136,7 @@ sub ACTION_test {
     $self->db_test_cmd( $cmd );
 
     # Tell the tests where to find stuff, like pgTAP.
-    local $ENV{$_} = $self->test_env->{$_} for keys %{ $self->test_env };
+    local %ENV = ( %ENV, %{ $self->test_env } );
 
     # Tell Catalyst to STFU and use the right config.
     local $ENV{CATALYST_DEBUG}  = 0;
