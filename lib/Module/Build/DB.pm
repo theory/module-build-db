@@ -6,6 +6,17 @@ use warnings;
 use base 'Module::Build';
 our $VERSION = '0.10';
 
+=begin comment
+
+Fake-out Module::Build. Delete if it ever changes to support =head1 headers
+other than all uppercase.
+
+=head1 NAME
+
+Module::Build::DB - Build and test database-backed applications
+
+=end comment
+
 =head1 Name
 
 Module::Build::DB - Build and test database-backed applications
@@ -500,7 +511,59 @@ sub _probe {
 
 __END__
 
+=head1 To Do
+
+=over
+
+=item *
+
+Update C<db_cmd()> to support other RDBMSs. Use driver classes, perhaps?
+
+=item *
+
+Improve migration support to be smarter? See
+L<http://www.justatheory.com/computers/databases/change-management.html>.
+
+=item *
+
+Remove Catalyst-specific stuff from C<ACTION_test()>?
+
+=item *
+
+Allow (some) tests to run without requiring C<./Build db>?
+
+=item *
+
+Be more flexible about how to set the default configuration file? Right now
+C<ACTION_config_data()> modifies the C<dist_version_from()> file. There needs
+to be a better way.
+
+=item *
+
+Support config files formats other than YAML. Maybe just switch to JSON and be
+done with it?
+
+=item *
+
+Change C<tap_harness_args()> so that it's not so specific to supporting pgTAP.
+This will require a new version of TAP::Harness, currently in development.
+
+=item *
+
+Change C<create_meta_table()> to support other RDBMSs. Again, a driver?
+
+=back
+
 =head1 Author
+
+=begin comment
+
+Fake-out Module::Build. Delete if it ever changes to support =head1 headers
+other than all uppercase.
+
+=head1 AUTHORS
+
+=end comment
 
 David E. Wheeler <david@kineticode.com>
 
