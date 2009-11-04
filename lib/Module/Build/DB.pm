@@ -494,10 +494,6 @@ L<http://www.justatheory.com/computers/databases/change-management.html>.
 
 =item *
 
-Remove Catalyst-specific stuff from C<ACTION_test()>?
-
-=item *
-
 Allow (some) tests to run without requiring C<./Build db>?
 
 =item *
