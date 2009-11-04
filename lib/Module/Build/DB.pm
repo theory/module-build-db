@@ -315,34 +315,6 @@ sub ACTION_db {
 
 =head2 Instance Methods
 
-=head3 tap_harness_args
-
-  my $tap_harness_args = $build->tap_harness_args;
-
-This method overrides the default value to provide support for pgTAP tests,
-using the database connection information in the current context's
-configuration file.
-
-=cut
-
-# Make sure htat we can just run SQL tests.
-# XXX Update to use new TAP::Harness source features when they've been merged
-# and released.
-sub tap_harness_args {
-    my $self = shift;
-    return {
-        exec => sub {
-            my ( $harness, $test_file ) = @_;
-            # Let Perl tests run.
-            return undef if $test_file =~ /[.]t$/;
-            return [ @{ $self->db_test_cmd }, '-f', $test_file ]
-                if $test_file =~ /[.]pg$/;
-        },
-    };
-}
-
-##############################################################################
-
 =begin private
 
 =head3 cx_config
@@ -542,11 +514,6 @@ to be a better way.
 
 Support config files formats other than YAML. Maybe just switch to JSON and be
 done with it?
-
-=item *
-
-Change C<tap_harness_args()> so that it's not so specific to supporting pgTAP.
-This will require a new version of TAP::Harness, currently in development.
 
 =item *
 
