@@ -94,12 +94,14 @@ current context will not be dropped, but it will be brought up-to-date.
 
 =head3 test_env
 
-  ./Build db --test_env PGOPTIONS='--search_path=tap,public'
+  ./Build db --test_env CATALYST_DEBUG=0 CATALYST_CONFIG=conf/test.yml
 
 Optional hash reference of environment variables to set for the lifetime of
-C<./Build test>. This can be useful when, for example, when using pgTAP tests
-and the pgTAP functions are installed in a schema outside the normal search
-path in your database.
+C<./Build test>. This can be useful for making Catalyst less verbose, for
+example. Another use is to tell PostgreSQL where to find pgTAP functions when
+they're installed in a schema outside the normal search path in your database:
+
+  ./Build db --test_env PGOPTIONS='--search_path=tap,public'
 
 =cut
 
@@ -124,10 +126,8 @@ __PACKAGE__->add_property( test_env         => {}     );
 =end comment
 
 Overrides the default implementation to ensure that tests are only run in the
-"test" context, to make sure that the database is up-to-date, and to set
-things up for pgTAP tests. The pgTAP test functions must be installed in the
-"tap" schema. It also sets an environment variable to get Catalyst to be
-quiet.
+"test" context, to make sure that the database is up-to-date, and to set up
+the test environment with values stored in C<test_env>.
 
 =cut
 
@@ -148,10 +148,6 @@ sub ACTION_test {
 
     # Tell the tests where to find stuff, like pgTAP.
     local %ENV = ( %ENV, %{ $self->test_env } );
-
-    # Tell Catalyst to STFU and use the right config.
-    local $ENV{CATALYST_DEBUG}  = 0;
-    local $ENV{CATALYST_CONFIG} = $self->cx_config;
 
     # Make it so.
     $self->SUPER::ACTION_test(@_);
