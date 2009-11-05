@@ -108,7 +108,7 @@ they're installed in a schema outside the normal search path in your database:
 __PACKAGE__->add_property( context          => 'test' );
 __PACKAGE__->add_property( cx_config        => undef  );
 __PACKAGE__->add_property( db_config_key    => 'dbi'  );
-__PACKAGE__->add_property( db_client        => 'psql' );
+__PACKAGE__->add_property( db_client        => undef  );
 __PACKAGE__->add_property( drop_db          => 0      );
 __PACKAGE__->add_property( db_test_cmd      => undef  );
 __PACKAGE__->add_property( test_env         => {}     );
@@ -143,8 +143,7 @@ sub ACTION_test {
     # Set things up for pgTAP tests.
     my $config = $self->read_cx_config;
     my ( $db, $cmd ) = $self->db_cmd( $config->{$self->db_config_key} );
-    push @{ $cmd }, '--dbname' => $db;
-    $self->db_test_cmd( $cmd );
+    $self->db_test_cmd([ @$cmd, $self->{driver}->get_db_option($db) ]);
 
     # Tell the tests where to find stuff, like pgTAP.
     local %ENV = ( %ENV, %{ $self->test_env } );
@@ -158,7 +157,8 @@ sub ACTION_test {
 =head3 run_tap_harness
 
 Override to properly C<exit 1> on failure, until a new version comes out with
-this patch: L<http://rt.cpan.org/Public/Bug/Display.html?id=49080>
+this patch: L<http://rt.cpan.org/Public/Bug/Display.html?id=49080> (probably
+0.36).
 
 =end comment
 
@@ -177,6 +177,8 @@ sub run_tap_harness {
 =begin comment
 
 =head3 ACTION_config_data
+
+XXX There needs to be a better way to do this (noted in To-Dos, too).
 
 =end comment
 
@@ -267,13 +269,7 @@ sub ACTION_db {
 
     # Does the database exist?
     my $db_exists = $self->drop_db ? 1 : $self->_probe(
-        @$cmd,
-        '-d' => 'template1',
-        '-c' => qq{
-            SELECT 1
-              FROM pg_catalog.pg_database
-             WHERE datname = '$db';
-        },
+        $self->{driver}->get_check_db_command($cmd, $db)
     );
 
     if ( $db_exists ) {
@@ -281,13 +277,10 @@ sub ACTION_db {
         if ( $self->drop_db ) {
             $self->log_info(qq{Dropping the "$db" database\n});
             $self->do_system(
-                @$cmd,
-                '-d' => 'template1',
-                '-c' => qq{DROP DATABASE IF EXISTS "$db"}
+                $self->{driver}->get_drop_db_command($cmd, $db)
             ) or die;
         } else {
             # Just run the upgrades and be done with it.
-            push @$cmd, '-d' => $db;
             $self->upgrade_db( $db, $cmd );
             return;
         }
@@ -295,15 +288,10 @@ sub ACTION_db {
 
     # Now create the database and run all of the SQL files.
     $self->log_info(qq{Creating the "$db" database\n});
-    $self->do_system(
-        @$cmd,
-        '-d' => 'template1',
-        '-c' => qq{CREATE DATABASE "$db"}
-    ) or die;
-    push @$cmd, '-d' => $db;
+    $self->do_system( $self->{driver}->get_create_db_command($cmd, $db) ) or die;
 
     # Add the metadata table and run all of the schema scripts.
-    $self->create_meta_table( $cmd );
+    $self->create_meta_table( $db, $cmd );
     $self->upgrade_db( $db, $cmd );
 }
 
@@ -337,7 +325,7 @@ sub cx_config {
   my $config = $build->read_cx_config;
 
 Uses L<YAML::Syck|YAML::Syck> to read and return the contents of the current
-context's configuration file.
+context's configuration file. Private for now.
 
 =cut
 
@@ -359,37 +347,35 @@ sub read_cx_config {
 Uses the current context's configuration to determine all of the options to
 run the C<db_client> both for testing and for building the database. Returns
 the name of the database and an array ref representing the C<db_client>
-command and all of its options, suitable for passing to C<system>. The The
-database name is not included in the command; simply append it to the command
-to have the command connect to that database:
-
-  push $db_cmd, '--dbname', $db_name;
-
-It is not included so as to enable connecting to another database (e.g.,
-template1) to create the database.
+command and all of its options, suitable for passing to C<system>. The
+database name is not included so as to enable connecting to another database
+(e.g., template1 on PostgreSQL) to create the database.
 
 =cut
 
 sub db_cmd {
     my ($self, $dconf) = @_;
-    ( my $dsn = $dconf->{dsn} ) =~ s/^dbi:[^:]+://i;
-    my %dsn = map { split /=/ } split /;/, $dsn;
 
-    # Set up the PostgreSQL command.
-    # XXX Update to support other clients.
-    my @cmd = (
-        $self->db_client,
-        '--username' => $dconf->{username} || $dconf->{user} || $ENV{PGUSER} || $ENV{USER},
-        '--quiet',
-        '--no-psqlrc',
-        '--no-align',
-        '--tuples-only',
-        '--set' => 'ON_ERROR_ROLLBACK=1',
-        '--set' => 'ON_ERROR_STOP=1',
-    );
-    push @cmd, '--host' => $dsn{host} if $dsn{host};
-    push @cmd, '--port' => $dsn{port} if $dsn{port};
-    return $dsn{dbname}, \@cmd
+    return @{$self}{qw(db_name db_cmd)} if $self->{db_cmd} && $self->{db_name};
+
+    require DBI;
+    my (undef, $driver, undef, undef, $driver_dsn) = DBI->parse_dsn($dconf->{dsn});
+    my %dsn = map { split /=/ } split /;/, $driver_dsn;
+
+    $driver = __PACKAGE__ . "::$driver";
+    eval "require $driver"
+        or die $@ || "Package $driver did not return a true value\n";
+
+    # Make sure we have a client.
+    $self->db_client( $driver->get_client ) unless $self->db_client;
+
+    my ($db, $cmd) = $driver->get_db_and_command($self->db_client, {
+        %{ $dconf }, %dsn
+    });
+    $self->{db_cmd} = $cmd;
+    $self->{db_name} = $db;
+    $self->{driver} = $driver;
+    return ($db, $cmd);
 }
 
 ##############################################################################
@@ -397,7 +383,7 @@ sub db_cmd {
 =head3 create_meta_table
 
   my ($db_name, $db_cmd ) = $build->db_cmd;
-  $build->create_meta_table( $db_cmd );
+  $build->create_meta_table( $db_name, $db_cmd );
 
 Creates the C<metadata> table, which Module::Build::DB uses to track the current
 schema version (corresponding to update numbers on the SQL scripts in F<sql>
@@ -408,19 +394,17 @@ dropped and recreated. One row is initially inserted, setting the
 =cut
 
 sub create_meta_table {
-    my ($self, $cmd) = @_;
+    my ($self, $db, $cmd) = @_;
     my $quiet = $self->quiet;
     $self->quiet(1) unless $quiet;
-    $self->do_system(@$cmd, '-c', qq{
-        SET client_min_messages=warning;
-        DROP TABLE IF EXISTS metadata;
-        CREATE TABLE metadata (
-            label TEXT PRIMARY KEY,
-            value INT  NOT NULL DEFAULT 0,
-            note  TEXT NOT NULL
-        );
+    my $driver = $self->{driver};
+    $self->do_system($driver->get_execute_command(
+        $cmd, $db,
+        $driver->get_metadata_table_sql,
+    )) or die;
+    $self->do_system( $driver->get_execute_command($cmd, $db, q{
         INSERT INTO metadata VALUES ( 'schema_version', 0, '' );
-    }) or die;
+    })) or die;
     $self->quiet(0) unless $quiet;
 }
 
@@ -442,11 +426,14 @@ sub upgrade_db {
     my ($self, $db, $cmd) = @_;
 
     $self->log_info(qq{Updating the "$db" database\n});
+    my $driver = $self->{driver};
 
     # Get the current version number of the schema.
     my $curr_version = $self->_probe(
-        @$cmd,
-        '-c' => qq{SELECT value FROM metadata WHERE label = 'schema_version'},
+        $driver->get_execute_command(
+            $cmd, $db,
+            qq{SELECT value FROM metadata WHERE label = 'schema_version'},
+        )
     );
 
     my $quiet = $self->quiet;
@@ -457,13 +444,13 @@ sub upgrade_db {
         next unless $new_version > $curr_version;
 
         # Apply the version.
-        $self->do_system( @$cmd, '-f' => $sql ) or die;
+        $self->do_system( $driver->get_file_command($cmd, $db, $sql) ) or die;
         $self->quiet(1) unless $quiet;
-        $self->do_system( @$cmd, '-c' => qq{
+        $self->do_system( $driver->get_execute_command($cmd, $db, qq{
             UPDATE metadata
                SET value = $new_version
              WHERE label = 'schema_version'
-        }) or die;
+        })) or die;
         $self->quiet(0) unless $quiet;
     }
 }
@@ -485,10 +472,6 @@ __END__
 
 =item *
 
-Update C<db_cmd()> to support other RDBMSs. Use driver classes, perhaps?
-
-=item *
-
 Improve migration support to be smarter? See
 L<http://www.justatheory.com/computers/databases/change-management.html>.
 
@@ -507,10 +490,6 @@ to be a better way.
 Support config files formats other than YAML. Maybe just switch to JSON and be
 done with it?
 
-=item *
-
-Change C<create_meta_table()> to support other RDBMSs. Again, a driver?
-
 =back
 
 =head1 Author
@@ -524,7 +503,7 @@ other than all uppercase.
 
 =end comment
 
-David E. Wheeler <david@kineticode.com>
+David E. Wheeler <david@justatheory.com>
 
 =head1 Copyright
 
