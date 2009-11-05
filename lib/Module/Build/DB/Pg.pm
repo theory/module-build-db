@@ -118,7 +118,7 @@ C<dbi:Pg:dbname=foo>).
   my @opts = Module::Build::DB::Pg->get_db_option($db_name);
 
 Returns a list of options to be appended to the command returned by
-C<get_db_and_command()> to connect to a specific database. For Postgresql,
+C<get_db_and_command()> to connect to a specific database. For PostgreSQL,
 that's simply C<< (--dbname' => $dbname) >>.
 
 =head3 C<get_create_db_command()>
