@@ -13,6 +13,7 @@ Module::Build->new(
         'Test::More'    => '0.70',
     },
     requires           => {
+        'Config::Any'   => '0.17',
         'Module::Build' => '0.34',
         'TAP::Harness'  => '3.13',
         'DBI'           => '1.43',

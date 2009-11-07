@@ -59,8 +59,9 @@ F<Build.PL> or on the command-line.
 Specifies the context in which the build will run. The context associates the
 build with a configuration file, and therefore must be named for one of the
 configuration files in F<conf>. For example, to build in the "dev" context,
-there must be a F<conf/dev.yml> file. Defaults to "test", which is also the
-only required context.
+there must be a F<conf/dev.yml> file (or F<conf/dev.json> or some other format
+supported by L<Config::Any|Config::Any>). Defaults to "test", which is also
+the only required context.
 
 =head3 db_client
 
@@ -80,9 +81,9 @@ current context will not be dropped, but it will be brought up-to-date.
 
 =head3 db_config_key
 
-The YAML key under which DBI configuration is stored in the configuration
-files. Defaults to "dbi". The keys that should be under this configuration
-key are:
+The config key under which DBI configuration is stored in the configuration
+files. Defaults to "dbi". The keys that should be under this configuration key
+are:
 
 =over
 
@@ -108,7 +109,7 @@ context configuration will be used.
 
 =head3 test_env
 
-  ./Build db --test_env CATALYST_DEBUG=0 CATALYST_CONFIG=conf/test.yml
+  ./Build db --test_env CATALYST_DEBUG=0 CATALYST_CONFIG=conf/test.json
 
 Optional hash reference of environment variables to set for the lifetime of
 C<./Build test>. This can be useful for making Catalyst less verbose, for
@@ -119,15 +120,15 @@ they're installed in a schema outside the normal search path in your database:
 
 =cut
 
-__PACKAGE__->add_property( context          => 'test' );
-__PACKAGE__->add_property( cx_config        => undef  );
-__PACKAGE__->add_property( db_config_key    => 'dbi'  );
-__PACKAGE__->add_property( db_client        => undef  );
-__PACKAGE__->add_property( drop_db          => 0      );
-__PACKAGE__->add_property( db_test_cmd      => undef  );
-__PACKAGE__->add_property( db_super_user    => undef  );
-__PACKAGE__->add_property( db_super_pass    => undef  );
-__PACKAGE__->add_property( test_env         => {}     );
+__PACKAGE__->add_property( context       => 'test' );
+__PACKAGE__->add_property( cx_config     => undef  );
+__PACKAGE__->add_property( db_config_key => 'dbi'  );
+__PACKAGE__->add_property( db_client     => undef  );
+__PACKAGE__->add_property( drop_db       => 0      );
+__PACKAGE__->add_property( db_test_cmd   => undef  );
+__PACKAGE__->add_property( db_super_user => undef  );
+__PACKAGE__->add_property( db_super_pass => undef  );
+__PACKAGE__->add_property( test_env      => {}     );
 
 ##############################################################################
 
@@ -154,10 +155,11 @@ sub ACTION_test {
         unless $self->context eq 'test';
 
     # Make sure the database is up-to-date.
-    $self->depends_on('code');
+    $self->depends_on('db');
 
     # Tell the tests where to find stuff, like pgTAP.
     local %ENV = ( %ENV, %{ $self->test_env } );
+
     # Make it so.
     $self->SUPER::ACTION_test(@_);
 }
@@ -313,7 +315,8 @@ sub ACTION_db {
 
 =head3 cx_config
 
-Stores the current context's configuration file. Private for now.
+Stores the current context's configuration file sans extension. Private for
+now.
 
 =end private
 
@@ -324,7 +327,7 @@ sub cx_config {
     return $self->{properties}{cx_config} if $self->{properties}{cx_config};
     return $self->{properties}{cx_config} = File::Spec->catfile(
         'conf',
-        $self->context . '.yml',
+        $self->context
     );
 }
 
@@ -334,7 +337,7 @@ sub cx_config {
 
   my $config = $build->read_cx_config;
 
-Uses L<YAML::Syck|YAML::Syck> to read and return the contents of the current
+Uses L<Config::Any|Config::Any> to read and return the contents of the current
 context's configuration file. Private for now.
 
 =cut
@@ -342,10 +345,9 @@ context's configuration file. Private for now.
 sub read_cx_config {
     my $self = shift;
     my $cfile = $self->cx_config;
-    die qq{Cannot read configuration file "$cfile" because it does not exist\n}
-        unless -f $cfile;
-    require YAML::Syck;
-    YAML::Syck::LoadFile($cfile);
+    require Config::Any;
+    my $cfg = Config::Any->load_stems({ stems => [ $cfile ], use_ext => 1 });
+    return (values %{ $cfg->[0] })[0];
 }
 
 =begin private
@@ -495,13 +497,9 @@ Allow (some) tests to run without requiring C<./Build db>?
 =item *
 
 Be more flexible about how to set the default configuration file? Right now
-C<ACTION_config_data()> modifies the C<dist_version_from()> file. There needs
-to be a better way.
-
-=item *
-
-Support config files formats other than YAML. Maybe just switch to JSON and be
-done with it?
+C<ACTION_config_data()> modifies the C<dist_version_from()> file and searches
+for F<conf/dev.yml>, which isn't very flexible. There needs to be a better
+way.
 
 =back
 
