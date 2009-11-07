@@ -18,6 +18,9 @@ sub get_db_and_command {
         '--skip-column-names',
         '--skip-line-numbers',
     );
+    if (my $pass = $params->{password} || $params->{pass}) {
+        push @cmd, "--password=$pass";
+    }
     push @cmd, '--host' => $params->{host} if $params->{host};
     push @cmd, '--port' => $params->{port} if $params->{port};
     return $params->{database}, \@cmd
