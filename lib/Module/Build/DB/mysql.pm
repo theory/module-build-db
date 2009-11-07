@@ -96,9 +96,9 @@ All methods are class methods.
 
   my $client = Module::Build::DB::mysql->get_client;
 
-Returns the name of the client to use to connect to MySQL. For now,
-that's just C<psql>, which is fine if it's in your path. Some code to search
-for a client might be added in the future.
+Returns the name of the client to use to connect to MySQL. For now, that's
+just C<mysql>, which is fine if it's in your path. Some code to search for a
+client might be added in the future.
 
 =head3 C<get_db_and_command()>
 
@@ -107,8 +107,8 @@ for a client might be added in the future.
 Returns a database name culled from C<$params> and an array reference with
 C<$client> and all required options for all access to the database. C<$params>
 contains both the contents of the context configuration file's DBI section and
-the attributes defined in the driver DSN (e.g., C<dbname=foo> in
-C<dbi:mysql:dbname=foo>).
+the attributes defined in the driver DSN (e.g., C<database=foo> in
+C<dbi:mysql:database=foo>).
 
 =head3 C<get_db_option()>
 
@@ -116,7 +116,7 @@ C<dbi:mysql:dbname=foo>).
 
 Returns a list of options to be appended to the command returned by
 C<get_db_and_command()> to connect to a specific database. For MySQL,
-that's simply C<< (--dbname' => $dbname) >>.
+that's simply C<< (--database' => $dbname) >>.
 
 =head3 C<get_create_db_command()>
 
