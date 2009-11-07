@@ -75,8 +75,8 @@ Module::Build::DB:SQLite - SQLite specifics for Module::Build::DB
 =head1 Description
 
 This module contains a number of class methods called by
-L<Module::Build::DB|Module::Build::DB> to handle SQLite specific tasks
-when detecting, building, and updating a database.
+L<Module::Build::DB|Module::Build::DB> to handle SQLite specific tasks when
+detecting, building, and updating a database.
 
 =head2 Methods
 
@@ -86,9 +86,9 @@ All methods are class methods.
 
   my $client = Module::Build::DB::SQLite->get_client;
 
-Returns the name of the client to use to connect to SQLite. For now,
-that's just C<psql>, which is fine if it's in your path. Some code to search
-for a client might be added in the future.
+Returns the name of the client to use to connect to SQLite. For now, that's
+just C<sqlite3>, which is fine if it's in your path. Some code to search for a
+client might be added in the future.
 
 =head3 C<get_db_and_command()>
 
@@ -97,16 +97,16 @@ for a client might be added in the future.
 Returns a database name culled from C<$params> and an array reference with
 C<$client> and all required options for all access to the database. C<$params>
 contains both the contents of the context configuration file's DBI section and
-the attributes defined in the driver DSN (e.g., C<dbname=foo> in
-C<dbi:SQLite:dbname=foo>).
+the attributes defined in the driver DSN (e.g., C<dbname=foo.db> in
+C<dbi:SQLite:dbname=foo.db>).
 
 =head3 C<get_db_option()>
 
   my @opts = Module::Build::DB::SQLite->get_db_option($db_name);
 
 Returns a list of options to be appended to the command returned by
-C<get_db_and_command()> to connect to a specific database. For SQLite,
-that's simply C<< (--dbname' => $dbname) >>.
+C<get_db_and_command()> to connect to a specific database. For SQLite, that's
+simply C<$dbname>.
 
 =head3 C<get_create_db_command()>
 
@@ -129,7 +129,7 @@ and C<$db> is the name of the database to be dropped.
   my @command = Module::Build::DB::SQLite->get_check_db_command($cmd, $db);
 
 Returns a command list suitable for passing to C<system()> that will, when
-executed, return a row when C<$db> exists and no row when C<$db> does not
+executed, output a 1 when C<$db> exists and nothing when C<$db> does not
 exist. C<$cmd> is the command returned by C<get_db_and_command()> and C<$db>
 is the name of the database to be checked.
 

@@ -138,7 +138,7 @@ and C<$db> is the name of the database to be dropped.
   my @command = Module::Build::DB::mysql->get_check_db_command($cmd, $db);
 
 Returns a command list suitable for passing to C<system()> that will, when
-executed, return a row when C<$db> exists and no row when C<$db> does not
+executed, output a 1 when C<$db> exists and nothing when C<$db> does not
 exist. C<$cmd> is the command returned by C<get_db_and_command()> and C<$db>
 is the name of the database to be checked.
 
