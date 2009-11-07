@@ -4,5 +4,5 @@ Module-Build-DB-*
 MANIFEST
 MANIFEST.bak
 META.*
-Build
+/Build
 MYMETA.*

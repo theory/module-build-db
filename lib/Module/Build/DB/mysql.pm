@@ -5,14 +5,14 @@ use warnings;
 our $VERSION = '0.10';
 use Cwd;
 
-sub get_client { 'psql' }
+sub get_client { 'mysql' }
 
 sub get_db_and_command {
     my ($class, $client, $params) = @_;
 
     my @cmd = (
         $client,
-        '--user' => $params->{username} || $params->{user} || $ENV{PGUSER} || $ENV{USER},
+        '--user' => $params->{username} || $params->{user},
         '--skip-pager',
         '--silent',
         '--skip-column-names',
@@ -67,7 +67,6 @@ sub get_file_command {
 
 sub get_metadata_table_sql {
     return q{
-        DROP TABLE IF EXISTS metadata;
         CREATE TABLE metadata (
             label VARCHAR(255) PRIMARY KEY,
             value INT  NOT NULL DEFAULT 0,
