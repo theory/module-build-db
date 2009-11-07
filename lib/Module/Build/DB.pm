@@ -490,6 +490,11 @@ to be a better way.
 Support config files formats other than YAML. Maybe just switch to JSON and be
 done with it?
 
+=item *
+
+Add support for building/updating the database with a user other than the one
+in the config file.
+
 =back
 
 =head1 Author
