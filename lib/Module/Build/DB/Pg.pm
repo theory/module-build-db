@@ -7,11 +7,12 @@ our $VERSION = '0.10';
 sub get_client { 'psql' }
 
 sub get_db_and_command {
-    my ($class, $client, $params) = @_;
+    my ($class, $client, $p) = @_;
 
+    my $user = $p->{db_super_user} || $p->{username} || $p->{user};
     my @cmd = (
         $client,
-        '--username' => $params->{username} || $params->{user} || $ENV{PGUSER} || $ENV{USER},
+        ($user ? ( '--username' => $user ) : ()),
         '--quiet',
         '--no-psqlrc',
         '--no-align',
@@ -19,9 +20,14 @@ sub get_db_and_command {
         '--set' => 'ON_ERROR_ROLLBACK=1',
         '--set' => 'ON_ERROR_STOP=1',
     );
-    push @cmd, '--host' => $params->{host} if $params->{host};
-    push @cmd, '--port' => $params->{port} if $params->{port};
-    return $params->{dbname}, \@cmd
+    push @cmd, '--host' => $p->{host} if $p->{host};
+    push @cmd, '--port' => $p->{port} if $p->{port};
+
+    # Hopefully this is sufficiently OS-independant for us to get away with it.
+    unshift @cmd, $^X, '-e', '$ENV{PGPASSWORD} = shift; exec @ARGV', $p->{db_super_pass}
+        if $p->{db_super_pass};
+
+    return $p->{dbname}, \@cmd;
 }
 
 sub get_db_option {

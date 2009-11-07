@@ -8,22 +8,22 @@ use Cwd;
 sub get_client { 'mysql' }
 
 sub get_db_and_command {
-    my ($class, $client, $params) = @_;
+    my ($class, $client, $p) = @_;
 
     my @cmd = (
         $client,
-        '--user' => $params->{username} || $params->{user},
+        '--user' => $p->{db_super_user} || $p->{username} || $p->{user},
         '--skip-pager',
         '--silent',
         '--skip-column-names',
         '--skip-line-numbers',
     );
-    if (my $pass = $params->{password} || $params->{pass}) {
+    if (my $pass = $p->{db_super_pass} || $p->{password} || $p->{pass}) {
         push @cmd, "--password=$pass";
     }
-    push @cmd, '--host' => $params->{host} if $params->{host};
-    push @cmd, '--port' => $params->{port} if $params->{port};
-    return $params->{database}, \@cmd
+    push @cmd, '--host' => $p->{host} if $p->{host};
+    push @cmd, '--port' => $p->{port} if $p->{port};
+    return $p->{database}, \@cmd
 }
 
 sub get_db_option {

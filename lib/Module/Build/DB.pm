@@ -13,30 +13,32 @@ other than all uppercase.
 
 =head1 NAME
 
-Module::Build::DB - Build and test database-backed applications
+Module::Build::DB - Build, configure, and test database-backed applications
 
 =end comment
 
 =head1 Name
 
-Module::Build::DB - Build and test database-backed applications
+Module::Build::DB - Build, configure, and test database-backed applications
 
 =head1 Synopsis
 
 In F<Build.PL>:
 
   use strict;
-  use lib 'lib';
   use Module::Build::DB;
 
   Module::Build::DB->new(
-      module_name => 'MyApp',
+      module_name   => 'MyApp',
+      db_config_key => 'dbi',
+      context       => 'test',
   )->create_build_script;
 
 =head1 Description
 
 This module subclasses L<Module::Build|Module::Build> to provide added
-functionality for installing and testing database-backed applications.
+functionality for configuring, building, and testing database-backed
+applications.
 
 =cut
 
@@ -60,6 +62,22 @@ configuration files in F<conf>. For example, to build in the "dev" context,
 there must be a F<conf/dev.yml> file. Defaults to "test", which is also the
 only required context.
 
+=head3 db_client
+
+  perl Build.PL --db_client /usr/local/pgsql/bin/pgsql
+
+Specifies the location of the database command-line client. Defaults to
+F<psql>, F<mysql>, or F<sqlite3>, depending on the value of the DSN in the
+context configuration file.
+
+=head3 drop_db
+
+  ./Build db --drop_db 1
+
+Tells the L</"db"> action to drop the database and build a new one. When this
+property is set to a false value (the default), an existing database for the
+current context will not be dropped, but it will be brought up-to-date.
+
 =head3 db_config_key
 
 The YAML key under which DBI configuration is stored in the configuration
@@ -76,21 +94,17 @@ key are:
 
 =back
 
-=head3 db_client
+=head3 db_super_user
 
-  perl Build.PL --db_client /usr/local/pgsql/bin/pgsql
+=head3 db_super_pass
 
-Specifies the location of the database command-line client. Defaults to
-F<psql>, F<mysql>, or F<sqlite3>, depending on the value of the DSN in the
-context configuration file.
+  perl Build.PL --db_super_user root --db_super_pass s3cr1t
 
-=head3 drop_db
-
-  ./Build db --drop_db 1
-
-Tells the L</"db"> action to drop the database and build a new one. When this
-property is set to a false value (the default), an existing database for the
-current context will not be dropped, but it will be brought up-to-date.
+Specifies a super user and password to be used to connect to the database.
+This is important if you need to connect to use a different database user to
+create and update the database. Most likely you'll use this for production
+deployments. If not specified the user name and password from the DSN in the
+context configuration will be used.
 
 =head3 test_env
 
@@ -111,6 +125,8 @@ __PACKAGE__->add_property( db_config_key    => 'dbi'  );
 __PACKAGE__->add_property( db_client        => undef  );
 __PACKAGE__->add_property( drop_db          => 0      );
 __PACKAGE__->add_property( db_test_cmd      => undef  );
+__PACKAGE__->add_property( db_super_user    => undef  );
+__PACKAGE__->add_property( db_super_pass    => undef  );
 __PACKAGE__->add_property( test_env         => {}     );
 
 ##############################################################################
@@ -140,14 +156,8 @@ sub ACTION_test {
     # Make sure the database is up-to-date.
     $self->depends_on('code');
 
-    # Set things up for pgTAP tests.
-    my $config = $self->read_cx_config;
-    my ( $db, $cmd ) = $self->db_cmd( $config->{$self->db_config_key} );
-    $self->db_test_cmd([ @$cmd, $self->{driver}->get_db_option($db) ]);
-
     # Tell the tests where to find stuff, like pgTAP.
     local %ENV = ( %ENV, %{ $self->test_env } );
-
     # Make it so.
     $self->SUPER::ACTION_test(@_);
 }
@@ -342,7 +352,7 @@ sub read_cx_config {
 
 =head3 db_cmd
 
-  my ($db_name, $db_cmd) = $build->db_cmd;
+  my ($db_name, $db_cmd) = $build->db_cmd($db_config);
 
 Uses the current context's configuration to determine all of the options to
 run the C<db_client> both for testing and for building the database. Returns
@@ -355,7 +365,6 @@ database name is not included so as to enable connecting to another database
 
 sub db_cmd {
     my ($self, $dconf) = @_;
-
     return @{$self}{qw(db_name db_cmd)} if $self->{db_cmd} && $self->{db_name};
 
     require DBI;
@@ -370,11 +379,15 @@ sub db_cmd {
     $self->db_client( $driver->get_client ) unless $self->db_client;
 
     my ($db, $cmd) = $driver->get_db_and_command($self->db_client, {
-        %{ $dconf }, %dsn
+        %{ $dconf },
+        %dsn,
+        db_super_user => $self->db_super_user,
+        db_super_pass => $self->db_super_pass,
     });
-    $self->{db_cmd} = $cmd;
+
+    $self->{db_cmd}  = $cmd;
     $self->{db_name} = $db;
-    $self->{driver} = $driver;
+    $self->{driver}  = $driver;
     return ($db, $cmd);
 }
 
@@ -489,11 +502,6 @@ to be a better way.
 
 Support config files formats other than YAML. Maybe just switch to JSON and be
 done with it?
-
-=item *
-
-Add support for building/updating the database with a user other than the one
-in the config file.
 
 =back
 
