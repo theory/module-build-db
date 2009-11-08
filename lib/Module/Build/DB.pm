@@ -118,17 +118,44 @@ they're installed in a schema outside the normal search path in your database:
 
   ./Build db --test_env PGOPTIONS='--search_path=tap,public'
 
+=head3 replace_config
+
+  Module::Build::DB->new(
+      module_name    => 'MyApp',
+      db_config_key  => 'dbi',
+      replace_config => 'conf/dev.json',
+  )->create_build_script;
+
+Set to a string or regular expression (using C<qr//>) and, the C<module_name>
+file will be opened during C<./Build> matches replaced with name of the
+context configuration file. This is useful when deploying Catalyst
+applications, for example, where your C<module_name> file might have something
+like this in it:
+
+  __PACKAGE__->config(
+      name                   => 'MyApp',
+      'Plugin::ConfigLoader' => { file => 'conf/dev.json' },
+  );
+
+The C<conf/dev.json> string would be replaced in the copy of the file in
+F<blib/lib> with the context configuration file name. Use a regular expression
+if you want to cover a variety of values, as in:
+
+      replace_config => qr{conf/[^.].json},
+
 =cut
 
-__PACKAGE__->add_property( context       => 'test' );
-__PACKAGE__->add_property( cx_config     => undef  );
-__PACKAGE__->add_property( db_config_key => 'dbi'  );
-__PACKAGE__->add_property( db_client     => undef  );
-__PACKAGE__->add_property( drop_db       => 0      );
-__PACKAGE__->add_property( db_test_cmd   => undef  );
-__PACKAGE__->add_property( db_super_user => undef  );
-__PACKAGE__->add_property( db_super_pass => undef  );
-__PACKAGE__->add_property( test_env      => {}     );
+__PACKAGE__->add_property( context        => 'test' );
+__PACKAGE__->add_property( cx_config      => undef  );
+__PACKAGE__->add_property( cx_config_file => undef  );
+__PACKAGE__->add_property( replace_config => undef  );
+__PACKAGE__->add_property( db_config_key  => 'dbi'  );
+__PACKAGE__->add_property( db_client      => undef  );
+__PACKAGE__->add_property( drop_db        => 0      );
+__PACKAGE__->add_property( db_test_cmd    => undef  );
+__PACKAGE__->add_property( db_super_user  => undef  );
+__PACKAGE__->add_property( db_super_pass  => undef  );
+__PACKAGE__->add_property( test_env       => {}     );
 
 ##############################################################################
 
@@ -205,6 +232,7 @@ is effectively configured for the proper context at installation time.
 
 sub ACTION_config_data {
     my $self = shift;
+    my $replace = $self->replace_config or return $self;
 
     my $file = File::Spec->catfile( split qr{/}, $self->dist_version_from);
     my $blib = File::Spec->catfile( $self->blib, $file );
@@ -212,20 +240,20 @@ sub ACTION_config_data {
     # Die if there is no file
     die qq{ERROR: "$blib" seems to be missing!\n} unless -e $blib;
 
-    # Just return if the default is correct.
-    return $self if $self->context eq 'dev';
+    # Make sure we have a config file.
+    $self->read_cx_config;
 
     # Figure out where we're going to install this beast.
     $file       .= '.new';
     my $new     = File::Spec->catfile( $self->blib, $file );
-    my $config  = $self->cx_config;
-    my $default = quotemeta File::Spec->catfile( qw( conf dev.yml) );
+    my $config  = $self->cx_config_file;
+    $replace    = quotemeta $replace unless ref $replace eq 'Regexp';
 
     # Update the file.
     open my $orig, '<', $blib or die qq{Cannot open "$blib": $!\n};
     open my $temp, '>', $new or die qq{Cannot open "$new": $!\n};
     while (<$orig>) {
-        s/$default/$config/g;
+        s/$replace/$config/g;
         print $temp $_;
     }
     close $orig;
@@ -233,6 +261,8 @@ sub ACTION_config_data {
 
     # Make the switch.
     rename $new, $blib or die "Cannot rename '$blib' to '$new': $!\n";
+    my $mode = oct(444) | ( $self->is_executable($blib) ? oct(111) : 0 );
+    chmod $mode, $blib;
     return $self;
 }
 
@@ -325,10 +355,7 @@ now.
 sub cx_config {
     my $self = shift;
     return $self->{properties}{cx_config} if $self->{properties}{cx_config};
-    return $self->{properties}{cx_config} = File::Spec->catfile(
-        'conf',
-        $self->context
-    );
+    return File::Spec->catfile( conf => $self->context );
 }
 
 ##############################################################################
@@ -345,9 +372,13 @@ context's configuration file. Private for now.
 sub read_cx_config {
     my $self = shift;
     my $cfile = $self->cx_config;
+    return $cfile if ref $cfile;
     require Config::Any;
-    my $cfg = Config::Any->load_stems({ stems => [ $cfile ], use_ext => 1 });
-    return (values %{ $cfg->[0] })[0];
+    my $cfg = Config::Any->load_stems({ stems => [ $cfile ], use_ext => 1 })->[0];
+    my ($file, $config) = %{ $cfg };
+    $self->cx_config_file($file);
+    $self->cx_config($config);
+    return $config;
 }
 
 =begin private
@@ -492,14 +523,9 @@ L<http://www.justatheory.com/computers/databases/change-management.html>.
 
 =item *
 
-Allow (some) tests to run without requiring C<./Build db>?
-
-=item *
-
-Be more flexible about how to set the default configuration file? Right now
-C<ACTION_config_data()> modifies the C<dist_version_from()> file and searches
-for F<conf/dev.yml>, which isn't very flexible. There needs to be a better
-way.
+Allow (some) tests to run without requiring C<./Build db>? I'm thinking not at
+this point, because if it's a database-backed app, you need a database to run
+the tests.
 
 =back
 
