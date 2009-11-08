@@ -124,7 +124,8 @@ they're installed in a schema outside the normal search path in your database:
 
 The name of the metadata table that Module::Build::DB uses to track migrations
 in the database. Defaults to "metadata". Change if that name conflicts with
-other objects in your application's database.
+other objects in your application's database, but use only characters that
+don't require quoting in the database (e.g., "my_meta" but not "my meta").
 
 =head3 replace_config
 
@@ -160,7 +161,6 @@ __PACKAGE__->add_property( replace_config => undef      );
 __PACKAGE__->add_property( db_config_key  => 'dbi'      );
 __PACKAGE__->add_property( db_client      => undef      );
 __PACKAGE__->add_property( drop_db        => 0          );
-__PACKAGE__->add_property( db_test_cmd    => undef      );
 __PACKAGE__->add_property( db_super_user  => undef      );
 __PACKAGE__->add_property( db_super_pass  => undef      );
 __PACKAGE__->add_property( test_env       => {}         );
