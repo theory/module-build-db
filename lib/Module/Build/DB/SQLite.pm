@@ -56,14 +56,15 @@ sub get_file_command {
     );
 }
 
-sub get_metadata_table_sql {
-    return q{
-        CREATE TABLE metadata (
+sub get_meta_table_sql {
+    my ($class, $table) = @_;
+    return qq{
+        CREATE TABLE $table (
             label TEXT PRIMARY KEY,
             value INT  NOT NULL DEFAULT 0,
             note  TEXT NOT NULL
         );
-    }
+    };
 }
 
 1;
@@ -152,11 +153,11 @@ the SQL in C<$file> and return its output, if any. C<$cmd> is the command
 returned by C<get_db_and_command()>, C<$db> is the name of the database to be
 connect to for the query, and C<$file> is a file with SQL commands.
 
-=head3 C<get_metadata_table_sql()>
+=head3 C<get_meta_table_sql()>
 
-  my $sql = Module::Build::DB::SQLite->get_metadata_table_sql;
+  my $sql = Module::Build::DB::SQLite->get_meta_table_sql($table_name);
 
-Returns an SQL string that creates the C<metadata> table.
+Returns an SQL string that creates a metadata table named C<$table_name>.
 
 =head1 Author
 

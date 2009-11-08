@@ -118,6 +118,14 @@ they're installed in a schema outside the normal search path in your database:
 
   ./Build db --test_env PGOPTIONS='--search_path=tap,public'
 
+=head3 meta_table
+
+  ./Build db --meta_table mymeta
+
+The name of the metadata table that Module::Build::DB uses to track migrations
+in the database. Defaults to "metadata". Change if that name conflicts with
+other objects in your application's database.
+
 =head3 replace_config
 
   Module::Build::DB->new(
@@ -145,17 +153,18 @@ if you want to cover a variety of values, as in:
 
 =cut
 
-__PACKAGE__->add_property( context        => 'test' );
-__PACKAGE__->add_property( cx_config      => undef  );
-__PACKAGE__->add_property( cx_config_file => undef  );
-__PACKAGE__->add_property( replace_config => undef  );
-__PACKAGE__->add_property( db_config_key  => 'dbi'  );
-__PACKAGE__->add_property( db_client      => undef  );
-__PACKAGE__->add_property( drop_db        => 0      );
-__PACKAGE__->add_property( db_test_cmd    => undef  );
-__PACKAGE__->add_property( db_super_user  => undef  );
-__PACKAGE__->add_property( db_super_pass  => undef  );
-__PACKAGE__->add_property( test_env       => {}     );
+__PACKAGE__->add_property( context        => 'test'     );
+__PACKAGE__->add_property( cx_config      => undef      );
+__PACKAGE__->add_property( cx_config_file => undef      );
+__PACKAGE__->add_property( replace_config => undef      );
+__PACKAGE__->add_property( db_config_key  => 'dbi'      );
+__PACKAGE__->add_property( db_client      => undef      );
+__PACKAGE__->add_property( drop_db        => 0          );
+__PACKAGE__->add_property( db_test_cmd    => undef      );
+__PACKAGE__->add_property( db_super_user  => undef      );
+__PACKAGE__->add_property( db_super_pass  => undef      );
+__PACKAGE__->add_property( test_env       => {}         );
+__PACKAGE__->add_property( meta_table     => 'metadata' );
 
 ##############################################################################
 
@@ -446,10 +455,11 @@ sub create_meta_table {
     my $driver = $self->{driver};
     $self->do_system($driver->get_execute_command(
         $cmd, $db,
-        $driver->get_metadata_table_sql,
+        $driver->get_meta_table_sql($self->meta_table),
     )) or die;
-    $self->do_system( $driver->get_execute_command($cmd, $db, q{
-        INSERT INTO metadata VALUES ( 'schema_version', 0, '' );
+    my $table = $self->meta_table;
+    $self->do_system( $driver->get_execute_command($cmd, $db, qq{
+        INSERT INTO $table VALUES ( 'schema_version', 0, '' );
     })) or die;
     $self->quiet(0) unless $quiet;
 }
@@ -473,12 +483,13 @@ sub upgrade_db {
 
     $self->log_info(qq{Updating the "$db" database\n});
     my $driver = $self->{driver};
+    my $table  = $self->meta_table;
 
     # Get the current version number of the schema.
     my $curr_version = $self->_probe(
         $driver->get_execute_command(
             $cmd, $db,
-            qq{SELECT value FROM metadata WHERE label = 'schema_version'},
+            qq{SELECT value FROM $table WHERE label = 'schema_version'},
         )
     );
 
@@ -493,7 +504,7 @@ sub upgrade_db {
         $self->do_system( $driver->get_file_command($cmd, $db, $sql) ) or die;
         $self->quiet(1) unless $quiet;
         $self->do_system( $driver->get_execute_command($cmd, $db, qq{
-            UPDATE metadata
+            UPDATE $table
                SET value = $new_version
              WHERE label = 'schema_version'
         })) or die;

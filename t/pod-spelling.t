@@ -16,3 +16,4 @@ dbi
 SQLite
 SQL
 pgTAP
+metadata
