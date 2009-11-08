@@ -43,9 +43,9 @@ SKIP: {
 }
 
 # Test etc and JSON.
-my $dir = catdir updir, 'mytest';
+$dir = catdir updir, 'mytest';
 chdir $dir or die "Can't chdir to $dir: $!\n";
-ok my $mb = $CLASS->new( module_name => 'Foo', quiet => 1 ),
+ok $mb = $CLASS->new( module_name => 'Foo', quiet => 1 ),
     'Create another M::B::DB object';
 require Config::Any::JSON;
 SKIP: {

@@ -60,7 +60,7 @@ Specifies the context in which the build will run. The context associates the
 build with a configuration file, and therefore must be named for one of the
 configuration files in F<conf>. For example, to build in the "dev" context,
 there must be a F<dev.yml> file (or F<dev.json> or some other format supported
-by L<Config::Any|Config::Any>) in the F<conf> or F<etc> diretory. Defaults to
+by L<Config::Any|Config::Any>) in the F<conf> or F<etc> directory. Defaults to
 "test", which is also the only required context.
 
 =head3 db_client
