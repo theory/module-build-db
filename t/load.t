@@ -10,14 +10,14 @@ my $CLASS;
 my @drivers;
 BEGIN {
     $CLASS   = 'Module::Build::DB';
-    my $dir  = catdir qw(lib Module Build DB);
+    my $dir  = catdir qw(lib Module Build DBD);
     my $qdir = quotemeta $dir;
     find {
         no_chdir => 1,
         wanted   => sub {
             s/[.]pm$// or return;
             s{^$qdir/?}{};
-            push @drivers, "$CLASS\::" . join( '::', splitdir $_);
+            push @drivers, $CLASS . 'D::' . join( '::', splitdir $_);
         }
     }, $dir;
 }

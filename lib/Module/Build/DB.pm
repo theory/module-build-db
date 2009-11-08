@@ -420,7 +420,7 @@ sub db_cmd {
     my (undef, $driver, undef, undef, $driver_dsn) = DBI->parse_dsn($dconf->{dsn});
     my %dsn = map { split /=/ } split /;/, $driver_dsn;
 
-    $driver = __PACKAGE__ . "::$driver";
+    $driver = __PACKAGE__ . "D::$driver";
     eval "require $driver"
         or die $@ || "Package $driver did not return a true value\n";
 

@@ -1,4 +1,4 @@
-package Module::Build::DB::mysql;
+package Module::Build::DBD::mysql;
 
 use strict;
 use warnings;
@@ -83,7 +83,7 @@ sub get_meta_table_sql {
 
 =head1 Name
 
-Module::Build::DB:mysql - MySQL specifics for Module::Build::DB
+Module::Build::DBD:mysql - MySQL specifics for Module::Build::DBD
 
 =head1 Description
 
@@ -97,7 +97,7 @@ All methods are class methods.
 
 =head3 C<get_client()>
 
-  my $client = Module::Build::DB::mysql->get_client;
+  my $client = Module::Build::DBD::mysql->get_client;
 
 Returns the name of the client to use to connect to MySQL. For now, that's
 just C<mysql>, which is fine if it's in your path. Some code to search for a
@@ -105,7 +105,7 @@ client might be added in the future.
 
 =head3 C<get_db_and_command()>
 
-  my ($db_name, $cmd) = Module::Build::DB::mysql->get_db_and_command($client, $params);
+  my ($db_name, $cmd) = Module::Build::DBD::mysql->get_db_and_command($client, $params);
 
 Returns a database name culled from C<$params> and an array reference with
 C<$client> and all required options for all access to the database. C<$params>
@@ -115,7 +115,7 @@ C<dbi:mysql:database=foo>).
 
 =head3 C<get_db_option()>
 
-  my @opts = Module::Build::DB::mysql->get_db_option($db_name);
+  my @opts = Module::Build::DBD::mysql->get_db_option($db_name);
 
 Returns a list of options to be appended to the command returned by
 C<get_db_and_command()> to connect to a specific database. For MySQL,
@@ -123,7 +123,7 @@ that's simply C<< (--database' => $dbname) >>.
 
 =head3 C<get_create_db_command()>
 
-  my @command = Module::Build::DB::mysql->get_create_db_command($cmd, $db);
+  my @command = Module::Build::DBD::mysql->get_create_db_command($cmd, $db);
 
 Returns a command list suitable for passing to C<system()> that will create a
 new database. C<$cmd> is the command returned by C<get_db_and_command()> and
@@ -131,7 +131,7 @@ C<$db> is the name of the database to be created.
 
 =head3 C<get_drop_db_command()>
 
-  my @command = Module::Build::DB::mysql->get_drop_db_command($cmd, $db);
+  my @command = Module::Build::DBD::mysql->get_drop_db_command($cmd, $db);
 
 Returns a command list suitable for passing to C<system()> that will drop an
 existing database. C<$cmd> is the command returned by C<get_db_and_command()>
@@ -139,7 +139,7 @@ and C<$db> is the name of the database to be dropped.
 
 =head3 C<get_check_db_command()>
 
-  my @command = Module::Build::DB::mysql->get_check_db_command($cmd, $db);
+  my @command = Module::Build::DBD::mysql->get_check_db_command($cmd, $db);
 
 Returns a command list suitable for passing to C<system()> that will, when
 executed, output a 1 when C<$db> exists and nothing when C<$db> does not
@@ -148,7 +148,7 @@ is the name of the database to be checked.
 
 =head3 C<get_execute_command()>
 
-  my @command = Module::Build::DB::mysql->get_execute_command($cmd, $db, $sql);
+  my @command = Module::Build::DBD::mysql->get_execute_command($cmd, $db, $sql);
 
 Returns a command list suitable for passing to C<system()> that will execute
 the SQL in C<$sql> and return its output, if any. C<$cmd> is the command
@@ -158,7 +158,7 @@ executed.
 
 =head3 C<get_file_command()>
 
-  my @command = Module::Build::DB::mysql->get_file_command($cmd, $db, $sql);
+  my @command = Module::Build::DBD::mysql->get_file_command($cmd, $db, $sql);
 
 Returns a command list suitable for passing to C<system()> that will execute
 the SQL in C<$file> and return its output, if any. C<$cmd> is the command
@@ -167,7 +167,7 @@ connect to for the query, and C<$file> is a file with SQL commands.
 
 =head3 C<get_meta_table_sql()>
 
-  my $sql = Module::Build::DB::mysql->get_met_table_sql;
+  my $sql = Module::Build::DBD::mysql->get_met_table_sql;
 
 Returns an SQL string that creates a metadata table named C<$table_name>.
 
