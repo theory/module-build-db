@@ -59,9 +59,9 @@ F<Build.PL> or on the command-line.
 Specifies the context in which the build will run. The context associates the
 build with a configuration file, and therefore must be named for one of the
 configuration files in F<conf>. For example, to build in the "dev" context,
-there must be a F<conf/dev.yml> file (or F<conf/dev.json> or some other format
-supported by L<Config::Any|Config::Any>). Defaults to "test", which is also
-the only required context.
+there must be a F<dev.yml> file (or F<dev.json> or some other format supported
+by L<Config::Any|Config::Any>) in the F<conf> or F<etc> diretory. Defaults to
+"test", which is also the only required context.
 
 =head3 db_client
 
@@ -150,13 +150,11 @@ The C<conf/dev.json> string would be replaced in the copy of the file in
 F<blib/lib> with the context configuration file name. Use a regular expression
 if you want to cover a variety of values, as in:
 
-      replace_config => qr{conf/[^.].json},
+      replace_config => qr{etc/[^.].json},
 
 =cut
 
 __PACKAGE__->add_property( context        => 'test'     );
-__PACKAGE__->add_property( cx_config      => undef      );
-__PACKAGE__->add_property( cx_config_file => undef      );
 __PACKAGE__->add_property( replace_config => undef      );
 __PACKAGE__->add_property( db_config_key  => 'dbi'      );
 __PACKAGE__->add_property( db_client      => undef      );
@@ -226,14 +224,12 @@ sub run_tap_harness {
 
 =head3 ACTION_config_data
 
-XXX There needs to be a better way to do this (noted in To-Dos, too).
-
 =end comment
 
 Overrides the default implementation to completely change its behavior. :-)
 Rather than creating a whole new configuration file in Module::Build's weird
 way, this action now simply opens the application file (that returned by
-C<dist_version_from> and replaces all instances of "conf/dev.yml" with the
+C<dist_version_from> and replaces all text matching C<replace_config> with the
 configuration file for the current context. This means that an installed app
 is effectively configured for the proper context at installation time.
 
@@ -250,7 +246,7 @@ sub ACTION_config_data {
     die qq{ERROR: "$blib" seems to be missing!\n} unless -e $blib;
 
     # Make sure we have a config file.
-    $self->read_cx_config;
+    $self->cx_config;
 
     # Figure out where we're going to install this beast.
     $file       .= '.new';
@@ -314,7 +310,7 @@ sub ACTION_db {
     my $self = shift;
 
     # Get the database configuration information.
-    my $config = $self->read_cx_config;
+    my $config = $self->cx_config;
 
     my ( $db, $cmd ) = $self->db_cmd( $config->{$self->db_config_key} );
 
@@ -361,33 +357,44 @@ now.
 
 =cut
 
-sub cx_config {
-    my $self = shift;
-    return $self->{properties}{cx_config} if $self->{properties}{cx_config};
-    return File::Spec->catfile( conf => $self->context );
-}
-
 ##############################################################################
 
-=head3 read_cx_config
+=head3 cx_config
 
-  my $config = $build->read_cx_config;
+  my $config = $build->cx_config;
 
 Uses L<Config::Any|Config::Any> to read and return the contents of the current
 context's configuration file. Private for now.
 
 =cut
 
-sub read_cx_config {
+sub cx_config {
     my $self = shift;
-    my $cfile = $self->cx_config;
-    return $cfile if ref $cfile;
+    return $self->{cx_config} if $self->{cx_config};
+    my @stems = map {
+        File::Spec->catfile( $_ => $self->context )
+    } qw(conf etc);
     require Config::Any;
-    my $cfg = Config::Any->load_stems({ stems => [ $cfile ], use_ext => 1 })->[0];
+    my $cfg = Config::Any->load_stems({ stems => \@stems, use_ext => 1 })->[0];
     my ($file, $config) = %{ $cfg };
     $self->cx_config_file($file);
-    $self->cx_config($config);
-    return $config;
+    return $self->{cx_config} = $config;
+}
+
+=head3 cx_config_file
+
+  my $config_file = $build->cx_config_file;
+
+Returns the name of the context configuration file loaded by C<cx_config>. If
+C<cx_config> has not yet been called and loaded a file, it will be.
+
+=cut
+
+sub cx_config_file {
+    my $self = shift;
+    return $self->{cx_config_file} = shift if @_;
+    $self->cx_config; # Make sure we've found the file.
+    return $self->{cx_config_file};
 }
 
 =begin private

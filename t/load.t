@@ -9,13 +9,14 @@ use File::Spec::Functions qw(catdir splitdir);
 my $CLASS;
 my @drivers;
 BEGIN {
-    $CLASS = 'Module::Build::DB';
-    my $dir = catdir qw(lib Module Build DB);
+    $CLASS   = 'Module::Build::DB';
+    my $dir  = catdir qw(lib Module Build DB);
+    my $qdir = quotemeta $dir;
     find {
         no_chdir => 1,
         wanted   => sub {
             s/[.]pm$// or return;
-            s{^$dir/?}{};
+            s{^$qdir/?}{};
             push @drivers, "$CLASS\::" . join( '::', splitdir $_);
         }
     }, $dir;
@@ -42,7 +43,6 @@ can_ok $CLASS, qw(
     ACTION_config_data
     ACTION_db
     cx_config
-    read_cx_config
     db_cmd
     create_meta_table
     upgrade_db
