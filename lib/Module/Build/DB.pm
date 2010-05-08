@@ -152,6 +152,13 @@ if you want to cover a variety of values, as in:
 
       replace_config => qr{etc/[^.].json},
 
+=head3 named
+
+  ./Build migration --named create_users
+
+A string to use when creating a new migration file. The above command would
+create a file named F<sql/$time-create_users.sql>.
+
 =cut
 
 __PACKAGE__->add_property( context        => 'test'     );
@@ -163,6 +170,7 @@ __PACKAGE__->add_property( db_super_user  => undef      );
 __PACKAGE__->add_property( db_super_pass  => undef      );
 __PACKAGE__->add_property( test_env       => {}         );
 __PACKAGE__->add_property( meta_table     => 'metadata' );
+__PACKAGE__->add_property( named          => undef      );
 
 ##############################################################################
 
@@ -214,6 +222,35 @@ sub run_tap_harness {
     my $ret = shift->SUPER::run_tap_harness(@_);
     exit 1 if $ret->{failed};
     return $ret;
+}
+
+##############################################################################
+
+=head3 migration
+
+=begin comment
+
+=head3 ACTION_migration
+
+=end comment
+
+Creates a new migration script. Best used in combination with the C<--named>
+option.
+
+=cut
+
+sub ACTION_migration {
+    my $self = shift;
+    File::Path::mkpath('sql');
+    die "Can't create directory sql: $!" unless -d 'sql';
+    my $file = File::Spec->catfile(
+        'sql',
+        (time . '-' . $self->named || 'migration') . '.sql'
+    );
+    my $fh = IO::File->new("> $file") or die "Can't create $file: $!";
+    print $fh "-- $file SQL Migration\n\n";
+    close $fh;
+    return $self;
 }
 
 ##############################################################################
