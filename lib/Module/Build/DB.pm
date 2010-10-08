@@ -6,17 +6,6 @@ use warnings;
 use base 'Module::Build';
 our $VERSION = '0.10';
 
-=begin comment
-
-Fake-out Module::Build. Delete if it ever changes to support =head1 headers
-other than all uppercase.
-
-=head1 NAME
-
-Module::Build::DB - Build, configure, and test database-backed applications
-
-=end comment
-
 =head1 Name
 
 Module::Build::DB - Build, configure, and test database-backed applications
@@ -585,15 +574,6 @@ the tests.
 =back
 
 =head1 Author
-
-=begin comment
-
-Fake-out Module::Build. Delete if it ever changes to support =head1 headers
-other than all uppercase.
-
-=head1 AUTHORS
-
-=end comment
 
 David E. Wheeler <david@justatheory.com>
 
