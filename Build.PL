@@ -6,10 +6,10 @@ Module::Build->new(
     module_name        => 'Module::Build::DB',
     license            => 'perl',
     configure_requires => {
-        'Module::Build' => '0.34',
+        'Module::Build' => '0.36',
     },
     build_requires     => {
-        'Module::Build' => '0.34',
+        'Module::Build' => '0.36',
         'Test::More'    => '0.70',
     },
     requires           => {

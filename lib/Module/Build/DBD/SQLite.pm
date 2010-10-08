@@ -71,13 +71,13 @@ sub get_meta_table_sql {
 
 =head1 Name
 
-Module::Build::DBD:SQLite - SQLite specifics for Module::Build::DBD
+Module::Build::DBD:SQLite - SQLite specifics for Module::Build::DB
 
 =head1 Description
 
-This module contains a number of class methods called by
-L<Module::Build::DB|Module::Build::DB> to handle SQLite specific tasks when
-detecting, building, and updating a database.
+This module contains a number of class methods called by L<Module::Build::DB>
+to handle SQLite specific tasks when detecting, building, and updating a
+database.
 
 =head2 Methods
 
@@ -87,9 +87,10 @@ All methods are class methods.
 
   my $client = Module::Build::DBD::SQLite->get_client;
 
-Returns the name of the client to use to connect to SQLite. For now, that's
-just C<sqlite3>, which is fine if it's in your path. Some code to search for a
-client might be added in the future.
+Returns the name of the client to use to connect to SQLite. For now,
+that's just C<sqlite3>, which is fine if it's in your path. Some code to search
+for a client might be added in the future. Either way, it's best to specify
+use the C<--db_client> option to avoid all ambiguity.
 
 =head3 C<get_db_and_command()>
 
@@ -165,7 +166,7 @@ David E. Wheeler <david@justatheory.com>
 
 =head1 Copyright
 
-Copyright (c) 2008-2009 David E. Wheeler. Some Rights Reserved.
+Copyright (c) 2008-2010 David E. Wheeler. Some Rights Reserved.
 
 This module is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.

@@ -23,11 +23,49 @@ In F<Build.PL>:
       context       => 'test',
   )->create_build_script;
 
+On the command-line:
+
+  perl Build.PL
+  ./Build --db_super_user postgres
+  ./Build db --context test
+  ./Build test
+
 =head1 Description
 
-This module subclasses L<Module::Build|Module::Build> to provide added
-functionality for configuring, building, and testing database-backed
-applications.
+This module subclasses L<Module::Build> to provide added functionality for
+configuring, building, and testing database-backed applications. It uses a
+simple Rails-style numbered migration scheme, although migration scripts are
+written in pure SQL, not Perl.
+
+Frankly, this isn't a great module. Some reasons:
+
+=over
+
+=item *
+
+The numbered method of tracking migration dependencies has very little
+flexibility.
+
+=item *
+
+Subclassing Module::Build is a really bad way to extend the build system,
+because you can't really mix in other build features.
+
+=back
+
+Someday, I hope to fix the first issue by looking more closely at L<database
+change
+management|http://www.justatheory.com/computers/databases/change-management.html>,
+and perhaps by adopting a L<completely different
+approach|http://www.depesz.com/index.php/2010/08/22/versioning/>. The latter
+problem I would likely solve by completely separating the migration code from
+the build system, and then integrating as appropriate (hopefully Module::Build
+will get proper plugins someday).
+
+But in the meantime, I have working code that depends on this simple
+implementation (which does support L<PostgreSQL|http://www.postgresql.org/>,
+L<SQLite|http://www.sqlite.org/> and L<MySQL|http://www.mysql.com/>), and I
+want it to be easy for people to get at this dependency. So here we are.
 
 =cut
 
@@ -46,11 +84,11 @@ F<Build.PL> or on the command-line.
   perl Build.PL --context test
 
 Specifies the context in which the build will run. The context associates the
-build with a configuration file, and therefore must be named for one of the
-configuration files in F<conf>. For example, to build in the "dev" context,
+build with a configuration file, and therefore must be named for a
+configuration file your project. For example, to build in the "dev" context,
 there must be a F<dev.yml> file (or F<dev.json> or some other format supported
-by L<Config::Any|Config::Any>) in the F<conf> or F<etc> directory. Defaults to
-"test", which is also the only required context.
+by L<Config::Any>) in the F<conf/> or F<etc/> directory of your project.
+Defaults to "test", which is also the only required context.
 
 =head3 db_client
 
@@ -66,12 +104,13 @@ context configuration file.
 
 Tells the L</"db"> action to drop the database and build a new one. When this
 property is set to a false value (the default), an existing database for the
-current context will not be dropped, but it will be brought up-to-date.
+current context will not be dropped, but it will be brought up-to-date by
+C<./Build db>.
 
 =head3 db_config_key
 
 The config key under which DBI configuration is stored in the configuration
-files. Defaults to "dbi". The keys that should be under this configuration key
+file. Defaults to "dbi". The keys that should be under this configuration key
 are:
 
 =over
@@ -91,10 +130,10 @@ are:
   perl Build.PL --db_super_user root --db_super_pass s3cr1t
 
 Specifies a super user and password to be used to connect to the database.
-This is important if you need to connect to use a different database user to
-create and update the database. Most likely you'll use this for production
-deployments. If not specified the user name and password from the DSN in the
-context configuration will be used.
+This is important if you need to use a different database user to create and
+update the database than to run your app. Most likely you'll use this for
+production deployments. If not specified the user name and password from the
+the context configuration file will be used.
 
 =head3 test_env
 
@@ -125,8 +164,8 @@ don't require quoting in the database (e.g., "my_meta" but not "my meta").
   )->create_build_script;
 
 Set to a string or regular expression (using C<qr//>) and, the C<module_name>
-file will be opened during C<./Build> matches replaced with name of the
-context configuration file. This is useful when deploying Catalyst
+file will be opened during C<./Build> and matching strings replaced with name
+of the context configuration file. This is useful when deploying Catalyst
 applications, for example, where your C<module_name> file might have something
 like this in it:
 
@@ -195,24 +234,6 @@ sub ACTION_test {
     $self->SUPER::ACTION_test(@_);
 }
 
-=begin comment
-
-=head3 run_tap_harness
-
-Override to properly C<exit 1> on failure, until a new version comes out with
-this patch: L<http://rt.cpan.org/Public/Bug/Display.html?id=49080> (probably
-0.36).
-
-=end comment
-
-=cut
-
-sub run_tap_harness {
-    my $ret = shift->SUPER::run_tap_harness(@_);
-    exit 1 if $ret->{failed};
-    return $ret;
-}
-
 ##############################################################################
 
 =head3 migration
@@ -223,8 +244,8 @@ sub run_tap_harness {
 
 =end comment
 
-Creates a new migration script. Best used in combination with the C<--named>
-option.
+Creates a new migration script in the F<sql> directory. Best used in
+combination with the C<--named> option.
 
 =cut
 
@@ -322,7 +343,7 @@ should be run. For example, you might have SQL files like so:
   sql/004-functions.sql
   sql/005-indexes.sql
 
-The SQL files will be run in order to build or update the database.
+The SQL files will be run in integer order to build or update the database.
 Module::Build::DB will track the current schema update number corresponding to
 the last run SQL script in the C<metadata> table in the database.
 
@@ -372,25 +393,12 @@ sub ACTION_db {
 
 =head2 Instance Methods
 
-=begin private
-
-=head3 cx_config
-
-Stores the current context's configuration file sans extension. Private for
-now.
-
-=end private
-
-=cut
-
-##############################################################################
-
 =head3 cx_config
 
   my $config = $build->cx_config;
 
 Uses L<Config::Any|Config::Any> to read and return the contents of the current
-context's configuration file. Private for now.
+context's configuration file.
 
 =cut
 
@@ -423,18 +431,16 @@ sub cx_config_file {
     return $self->{cx_config_file};
 }
 
-=begin private
-
 =head3 db_cmd
 
   my ($db_name, $db_cmd) = $build->db_cmd($db_config);
 
 Uses the current context's configuration to determine all of the options to
-run the C<db_client> both for testing and for building the database. Returns
-the name of the database and an array ref representing the C<db_client>
-command and all of its options, suitable for passing to C<system>. The
-database name is not included so as to enable connecting to another database
-(e.g., template1 on PostgreSQL) to create the database.
+run the C<db_client> for building the database. Returns the name of the
+database and an array ref representing the C<db_client> command and all of its
+options, suitable for passing to C<system>. The database name is not included
+so as to enable connecting to another database (e.g., template1 on PostgreSQL)
+to create the database.
 
 =cut
 
@@ -556,30 +562,13 @@ sub _probe {
 
 __END__
 
-=head1 To Do
-
-=over
-
-=item *
-
-Improve migration support to be smarter? See
-L<http://www.justatheory.com/computers/databases/change-management.html>.
-
-=item *
-
-Allow (some) tests to run without requiring C<./Build db>? I'm thinking not at
-this point, because if it's a database-backed app, you need a database to run
-the tests.
-
-=back
-
 =head1 Author
 
 David E. Wheeler <david@justatheory.com>
 
 =head1 Copyright
 
-Copyright (c) 2008-2009 David E. Wheeler. Some Rights Reserved.
+Copyright (c) 2008-2010 David E. Wheeler. Some Rights Reserved.
 
 This module is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.

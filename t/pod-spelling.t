@@ -17,3 +17,4 @@ SQLite
 SQL
 pgTAP
 metadata
+plugins

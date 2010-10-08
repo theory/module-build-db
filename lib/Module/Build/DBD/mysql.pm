@@ -87,9 +87,9 @@ Module::Build::DBD:mysql - MySQL specifics for Module::Build::DBD
 
 =head1 Description
 
-This module contains a number of class methods called by
-L<Module::Build::DB|Module::Build::DB> to handle MySQL specific tasks
-when detecting, building, and updating a database.
+This module contains a number of class methods called by L<Module::Build::DB>
+to handle MySQL specific tasks when detecting, building, and updating a
+database.
 
 =head2 Methods
 
@@ -101,7 +101,8 @@ All methods are class methods.
 
 Returns the name of the client to use to connect to MySQL. For now, that's
 just C<mysql>, which is fine if it's in your path. Some code to search for a
-client might be added in the future.
+client might be added in the future. Either way, it's best to specify use the
+C<--db_client> option to avoid all ambiguity.
 
 =head3 C<get_db_and_command()>
 
@@ -118,8 +119,8 @@ C<dbi:mysql:database=foo>).
   my @opts = Module::Build::DBD::mysql->get_db_option($db_name);
 
 Returns a list of options to be appended to the command returned by
-C<get_db_and_command()> to connect to a specific database. For MySQL,
-that's simply C<< (--database' => $dbname) >>.
+C<get_db_and_command()> to connect to a specific database. For MySQL, that's
+simply C<< ('--database' => $dbname) >>.
 
 =head3 C<get_create_db_command()>
 
@@ -177,7 +178,7 @@ David E. Wheeler <david@justatheory.com>
 
 =head1 Copyright
 
-Copyright (c) 2008-2009 David E. Wheeler. Some Rights Reserved.
+Copyright (c) 2008-2010 David E. Wheeler. Some Rights Reserved.
 
 This module is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
