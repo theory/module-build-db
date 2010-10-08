@@ -89,9 +89,9 @@ are:
 
 =item * C<dsn>
 
-=item * C<user>
+=item * C<username>
 
-=item * C<pass>
+=item * C<password>
 
 =back
 
