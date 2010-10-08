@@ -2,7 +2,7 @@ package Module::Build::DBD::SQLite;
 
 use strict;
 use warnings;
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 sub get_client { 'sqlite3' }
 

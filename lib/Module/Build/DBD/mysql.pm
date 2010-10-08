@@ -2,7 +2,7 @@ package Module::Build::DBD::mysql;
 
 use strict;
 use warnings;
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 use Cwd;
 
 sub get_client { 'mysql' }
