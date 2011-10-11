@@ -25,8 +25,8 @@ Module::Build->new(
     meta_merge         => {
         resources => {
             homepage    => 'http://search.cpan.org/dist/Module-Build-DB/',
-            bugtracker  => 'http://github.com/theory/module-build-pg/issues/',
-            repository  => 'http://github.com/theory/module-build-pg/tree/',
+            bugtracker  => 'http://github.com/theory/module-build-rpm/issues/',
+            repository  => 'http://github.com/theory/module-build-rpm/tree/',
         }
     },
 )->create_build_script;
